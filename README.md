@@ -5,7 +5,7 @@ Format a selection of code using the `code-format:format-code` command.
 
 When no selection is provided, the entire file is formatted.
 
-![Code Format](./images/code-format.gif)
+![Code Format](https://user-images.githubusercontent.com/97994/99140640-2effa880-2609-11eb-8078-c73cabf00706.png)
 
 Code Format also provides APIs to:
 
