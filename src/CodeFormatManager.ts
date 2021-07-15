@@ -126,66 +126,57 @@ export default class CodeFormatManager {
   }
 
   // Return the text edits used to format code in the editor specified.
-  _formatCodeInTextEditor(editor: TextEditor, range?: Range): Observable<Array<TextEdit>> {
-    return Observable.defer(() => {
-      const buffer = editor.getBuffer()
-      const selectionRange = range || editor.getSelectedBufferRange()
-      const { start: selectionStart, end: selectionEnd } = selectionRange
-      let formatRange: Range
-      if (selectionRange.isEmpty()) {
-        // If no selection is done, then, the whole file is wanted to be formatted.
-        formatRange = buffer.getRange()
-      } else {
-        // Format selections should start at the beginning of the line,
-        // and include the last selected line end.
-        // (If the user has already selected complete rows, then depending on how they
-        // did it, their caret might be either (1) at the end of their last selected line
-        // or (2) at the first column of the line AFTER their selection. In both cases
-        // we snap the formatRange to end at the first column of the line after their
-        // selection.)
-        formatRange = new Range(
-          [selectionStart.row, 0],
-          selectionEnd.column === 0 ? selectionEnd : [selectionEnd.row + 1, 0]
-        )
-      }
-      const rangeProviders = [...this._rangeProviders.getAllProvidersForEditor(editor)]
-      const fileProviders = [...this._fileProviders.getAllProvidersForEditor(editor)]
-      const contents = editor.getText()
-      const rangeEdits = Observable.defer(() =>
-        this._reportBusy(editor, Promise.all(rangeProviders.map((p) => p.formatCode(editor, formatRange))))
-      ).switchMap((allEdits) => {
-        const firstNonEmpty = allEdits.find((edits) => edits.length > 0)
-        if (firstNonEmpty == null) {
-          return Observable.empty()
-        } else {
-          return Observable.of(firstNonEmpty)
-        }
-      })
-      const fileEdits = Observable.defer(() =>
-        this._reportBusy(editor, Promise.all(fileProviders.map((p) => p.formatEntireFile(editor, formatRange))))
+  async _formatCodeInTextEditor(editor: TextEditor, range?: Range): Promise<Array<TextEdit>> {
+    const buffer = editor.getBuffer()
+    const selectionRange = range || editor.getSelectedBufferRange()
+    const { start: selectionStart, end: selectionEnd } = selectionRange
+    let formatRange: Range
+    if (selectionRange.isEmpty()) {
+      // If no selection is done, then, the whole file is wanted to be formatted.
+      formatRange = buffer.getRange()
+    } else {
+      // Format selections should start at the beginning of the line,
+      // and include the last selected line end.
+      // (If the user has already selected complete rows, then depending on how they
+      // did it, their caret might be either (1) at the end of their last selected line
+      // or (2) at the first column of the line AFTER their selection. In both cases
+      // we snap the formatRange to end at the first column of the line after their
+      // selection.)
+      formatRange = new Range(
+        [selectionStart.row, 0],
+        selectionEnd.column === 0 ? selectionEnd : [selectionEnd.row + 1, 0]
       )
-        .switchMap((allResults) => {
-          const firstNonNull = allResults.find((result) => result != null)
-          if (firstNonNull == null) {
-            return Observable.empty()
-          } else {
-            return Observable.of(firstNonNull)
-          }
-        })
-        .map(({ formatted }) => {
-          return [
-            {
-              oldRange: editor.getBuffer().getRange(),
-              newText: formatted,
-              oldText: contents,
-            },
-          ]
-        })
-      // When formatting the entire file, prefer file-based providers.
-      const preferFileEdits = formatRange.isEqual(buffer.getRange())
-      const edits = preferFileEdits ? fileEdits.concat(rangeEdits) : rangeEdits.concat(fileEdits)
-      return edits.first(Boolean, [])
-    })
+    }
+    const rangeProviders = [...this._rangeProviders.getAllProvidersForEditor(editor)]
+    const fileProviders = [...this._fileProviders.getAllProvidersForEditor(editor)]
+    const contents = editor.getText()
+
+    const allEdits = await this._reportBusy(
+      editor,
+      Promise.all(rangeProviders.map((p) => p.formatCode(editor, formatRange)))
+    )
+    const rangeEdits = allEdits.filter((edits) => edits.length > 0)
+
+    const allResults = await this._reportBusy(
+      editor,
+      Promise.all(fileProviders.map((p) => p.formatEntireFile(editor, formatRange)))
+    )
+    const nonNullResults = allResults.filter((result) => result !== null && result !== undefined) as {
+      newCursor?: number
+      formatted: string
+    }[]
+    const fileEdits = nonNullResults.map(({ formatted }) => [
+      {
+        oldRange: editor.getBuffer().getRange(),
+        newText: formatted,
+        oldText: contents,
+      } as TextEdit,
+    ])
+
+    // When formatting the entire file, prefer file-based providers.
+    const preferFileEdits = formatRange.isEqual(buffer.getRange())
+    const edits = preferFileEdits ? fileEdits.concat(rangeEdits) : rangeEdits.concat(fileEdits)
+    return edits.flat() // TODO or [0]?
   }
 
   _formatCodeOnTypeInTextEditor(
