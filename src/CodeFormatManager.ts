@@ -1,4 +1,4 @@
-import type { Point, TextEditor, TextChange, Disposable } from "atom"
+import type { TextEditor, TextChange, Disposable } from "atom"
 // TODO add to @types/atom
 type AggregatedTextChange = {
   changes: Array<TextChange>
@@ -173,7 +173,7 @@ export default class CodeFormatManager {
             return Observable.of(firstNonNull)
           }
         })
-        .map(({ _, formatted }) => {
+        .map(({ formatted }) => {
           return [
             {
               oldRange: editor.getBuffer().getRange(),
