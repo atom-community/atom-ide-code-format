@@ -1,10 +1,10 @@
 import { createPlugins } from "rollup-plugin-atomic"
 
-const plugins = createPlugins(["js", "babel", "json"])
+const plugins = createPlugins([["ts", { tsconfig: "./src/tsconfig.json" }, true], "js", "json"])
 
 const RollupConfig = [
   {
-    input: "src/main.js",
+    input: "src/main.ts",
     output: [
       {
         dir: "dist",
