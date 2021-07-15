@@ -1,18 +1,16 @@
-import { Range } from "atom"
+import { Range, TextEditor } from "atom"
 import { observeTextEditors } from "@atom-ide-community/nuclide-commons-atom/FileEventHandlers"
 import CodeFormatManager, { SAVE_TIMEOUT } from "../src/CodeFormatManager"
 import UniversalDisposable from "@atom-ide-community/nuclide-commons/UniversalDisposable"
 import temp from "temp"
 import * as config from "../src/config"
-import { waitsFor } from "waitsfor"
-
-const sleep = (n) => new Promise((r) => setTimeout(r, n))
+import { waitFor, sleep } from "./utils"
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = SAVE_TIMEOUT + 100
 describe("CodeFormatManager", () => {
-  let textEditor
-  let manager
-  let disposables
+  let textEditor: TextEditor
+  let manager: CodeFormatManager
+  let disposables: UniversalDisposable
   beforeEach(async () => {
     manager = new CodeFormatManager()
     disposables = new UniversalDisposable(observeTextEditors())
@@ -20,7 +18,7 @@ describe("CodeFormatManager", () => {
     const file = temp.openSync()
     textEditor = await atom.workspace.open(file.path)
   })
-  afterEach(async () => {
+  afterEach(() => {
     manager.dispose()
     disposables.dispose()
   })
@@ -38,10 +36,8 @@ describe("CodeFormatManager", () => {
         ]),
     })
     textEditor.setText("abc")
-    atom.commands.dispatch(atom.views.getView(textEditor), "code-format:format-code")
-    await waitsFor(() => textEditor.getText() === "def", {
-      timeout: SAVE_TIMEOUT,
-    })
+    await atom.commands.dispatch(atom.views.getView(textEditor), "code-format:format-code")
+    await waitFor(() => textEditor.getText() === "def")
   })
   it("format an editor using formatEntireFile", async () => {
     manager.addFileProvider({
@@ -53,10 +49,8 @@ describe("CodeFormatManager", () => {
         }),
     })
     textEditor.setText("abc")
-    atom.commands.dispatch(atom.views.getView(textEditor), "code-format:format-code")
-    await waitsFor(() => textEditor.getText() === "ghi", {
-      timeout: SAVE_TIMEOUT,
-    })
+    await atom.commands.dispatch(atom.views.getView(textEditor), "code-format:format-code")
+    await waitFor(() => textEditor.getText() === "ghi")
   })
   it("formats an editor on type", async () => {
     spyOn(config, "getFormatOnType").and.returnValue(true)
@@ -79,11 +73,9 @@ describe("CodeFormatManager", () => {
     textEditor.setCursorBufferPosition([0, 1])
     textEditor.insertText("b")
     textEditor.insertText("c")
-    await waitsFor(() => textEditor.getText() === "def", {
-      timeout: SAVE_TIMEOUT,
-    })
+    await waitFor(() => textEditor.getText() === "def")
     // Debouncing should ensure only one format call.
-    expect(spy.mock.calls.length).toBe(1)
+    expect(spy.calls.count()).toBe(1)
   })
   it("formats an editor on save", async () => {
     spyOn(config, "getFormatOnSave").and.returnValue(true)
@@ -114,12 +106,11 @@ describe("CodeFormatManager", () => {
       },
     })
     const spy = spyOn(textEditor.getBuffer(), "save")
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
     textEditor.save()
     // Wait until the buffer has been saved and verify it has been saved exactly
     // once.
-    await waitsFor(() => spy.mock.calls.length > 0, {
-      timeout: SAVE_TIMEOUT,
-    })
-    expect(spy.mock.calls.length).toBe(1)
+    await waitFor(() => spy.calls.count() > 0)
+    expect(spy.calls.count()).toBe(1)
   })
 })

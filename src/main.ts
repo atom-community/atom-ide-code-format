@@ -1,7 +1,6 @@
 import type { Disposable } from "atom"
 import type { BusySignalService } from "atom-ide-base"
 import type {
-  CodeFormatProvider,
   RangeCodeFormatProvider,
   FileCodeFormatProvider,
   OnTypeCodeFormatProvider,
@@ -16,32 +15,6 @@ let codeFormatManager: CodeFormatManager
 
 export function activate() {
   codeFormatManager = new CodeFormatManager()
-}
-
-export function consumeLegacyProvider(provider: CodeFormatProvider): Disposable {
-  // Legacy providers used `selector` / `inclusionPriority`.
-  // $FlowIgnore legacy API compatability.
-  provider.grammarScopes =
-    provider.grammarScopes ||
-    // $FlowIgnore
-    (provider.selector != null ? provider.selector.split(", ") : null)
-  provider.priority =
-    provider.priority != null
-      ? provider.priority
-      : // $FlowFixMe(>=0.68.0) Flow suppress (T27187857)
-      provider.inclusionPriority != null
-      ? provider.inclusionPriority
-      : 0
-  if (provider.formatCode) {
-    return consumeRangeProvider(provider)
-  } else if (provider.formatEntireFile) {
-    return consumeFileProvider(provider)
-  } else if (provider.formatAtPosition) {
-    return consumeOnTypeProvider(provider)
-  } else if (provider.formatOnSave) {
-    return consumeOnSaveProvider(provider)
-  }
-  throw new Error("Invalid code format provider")
 }
 
 export function consumeRangeProvider(provider: RangeCodeFormatProvider): Disposable {
@@ -67,3 +40,6 @@ export function consumeBusySignal(busySignalService: BusySignalService): Disposa
 export function deactivate() {
   codeFormatManager.dispose()
 }
+
+// TODO remove
+export { consumeLegacyProvider } from "./legacy-provider"

@@ -1,4 +1,4 @@
-import type { Point, TextEditor, TextChange, Disposable } from "atom"
+import type { TextEditor, TextChange, Disposable } from "atom"
 // TODO add to @types/atom
 type AggregatedTextChange = {
   changes: Array<TextChange>
@@ -78,7 +78,7 @@ export default class CodeFormatManager {
 
     // Events from editor actions (saving, typing).
     const editorEvents = observableFromSubscribeFunction((cb) => atom.workspace.observeTextEditors(cb)).mergeMap(
-      (editor) => this._getEditorEventStream(editor)
+      (editor) => _getEditorEventStream(editor)
     )
 
     return (
@@ -94,22 +94,6 @@ export default class CodeFormatManager {
           events.let(completingSwitchMap((event) => this._handleEvent(event)))
         )
         .subscribe()
-    )
-  }
-
-  /** Returns a stream of all typing and saving operations from the editor. */
-  _getEditorEventStream(editor: TextEditor): Observable<FormatEvent> {
-    const changeEvents = observableFromSubscribeFunction((callback) => editor.getBuffer().onDidChangeText(callback))
-
-    // We need to capture when editors are about to be destroyed in order to
-    // interrupt any pending formatting operations. (Otherwise, we may end up
-    // attempting to save a destroyed editor!)
-    const willDestroyEvents = observableFromSubscribeFunction((cb) => atom.workspace.onWillDestroyPaneItem(cb)).filter(
-      (event) => event.item === editor
-    )
-
-    return Observable.merge(changeEvents.map((edit) => ({ type: "type", editor, edit }))).takeUntil(
-      Observable.merge(observeEditorDestroy(editor), willDestroyEvents)
     )
   }
 
@@ -139,14 +123,6 @@ export default class CodeFormatManager {
         })
       default:
         return Observable.throw(`unknown event type ${event.type}`)
-    }
-  }
-
-  // Checks whether contents are same in the buffer post-format, throwing if
-  // anything has changed.
-  _checkContentsAreSame(before: string, after: string): void {
-    if (before !== after) {
-      throw new Error("The file contents were changed before formatting was complete.")
     }
   }
 
@@ -197,7 +173,7 @@ export default class CodeFormatManager {
             return Observable.of(firstNonNull)
           }
         })
-        .map(({ _, formatted }) => {
+        .map(({ formatted }) => {
           return [
             {
               oldRange: editor.getBuffer().getRange(),
@@ -270,7 +246,7 @@ export default class CodeFormatManager {
           if (edits.length === 0) {
             return
           }
-          this._checkContentsAreSame(contents, editor.getText())
+          _checkContentsAreSame(contents, editor.getText())
           // Note that this modification is not in a transaction, so it applies as a
           // separate editing event than the character typing. This means that you
           // can undo just the formatting by attempting to undo once, and then undo
@@ -394,5 +370,29 @@ function isBracketPair(typedText: string): boolean {
     return false
   }
   const validBracketPairs: Array<string> = atom.config.get("bracket-matcher.autocompleteCharacters") as any
-  return validBracketPairs.indexOf(typedText) !== -1
+  return validBracketPairs.includes(typedText)
+}
+
+// Checks whether contents are same in the buffer post-format, throwing if
+// anything has changed.
+function _checkContentsAreSame(before: string, after: string): void {
+  if (before !== after) {
+    throw new Error("The file contents were changed before formatting was complete.")
+  }
+}
+
+/** Returns a stream of all typing and saving operations from the editor. */
+function _getEditorEventStream(editor: TextEditor): Observable<FormatEvent> {
+  const changeEvents = observableFromSubscribeFunction((callback) => editor.getBuffer().onDidChangeText(callback))
+
+  // We need to capture when editors are about to be destroyed in order to
+  // interrupt any pending formatting operations. (Otherwise, we may end up
+  // attempting to save a destroyed editor!)
+  const willDestroyEvents = observableFromSubscribeFunction((cb) => atom.workspace.onWillDestroyPaneItem(cb)).filter(
+    (event) => event.item === editor
+  )
+
+  return Observable.merge(changeEvents.map((edit) => ({ type: "type", editor, edit }))).takeUntil(
+    Observable.merge(observeEditorDestroy(editor), willDestroyEvents)
+  )
 }

@@ -21,6 +21,7 @@ specifiers:
   shx: ^0.3.3
   temp: ^0.9.4
   typescript: ^4.3.5
+  waitit: ^1.0.3
   waitsfor: ^0.0.6
 
 dependencies:
@@ -46,6 +47,7 @@ devDependencies:
   shx: 0.3.3
   temp: 0.9.4
   typescript: 4.3.5
+  waitit: 1.0.3
   waitsfor: 0.0.6
 
 packages:
@@ -6930,6 +6932,10 @@ packages:
 
   /vscode-uri/3.0.2:
     resolution: {integrity: sha512-jkjy6pjU1fxUvI51P+gCsxg1u2n8LSt0W6KrCNQceaziKzff74GoWmjVG46KieVzybO1sttPQmYfrwSHey7GUA==}
+    dev: true
+
+  /waitit/1.0.3:
+    resolution: {integrity: sha512-liTCqvi2eF41dm29BmJq8O+JtPPH/UmQzht+BG22mF9mkOcQflFjce7eZIdGYYeBFRBCVXinnZh1JjrmfbgOIA==}
     dev: true
 
   /waitsfor/0.0.6:
