@@ -26,28 +26,6 @@
   "engines": {
     "atom": ">=1.52.0 <2.0.0"
   },
-  "nuclide": {
-    "configMetadata": {
-      "pathComponents": [
-        "IDE",
-        "Code Formatting"
-      ]
-    }
-  },
-  "atomConfig": {
-    "formatOnSave": {
-      "title": "Format on Save",
-      "type": "boolean",
-      "default": false,
-      "description": "Automatically format code upon saving for supported languages."
-    },
-    "formatOnType": {
-      "title": "Format on Type",
-      "type": "boolean",
-      "default": true,
-      "description": "Automatically format code as you type it for supported languages."
-    }
-  },
   "consumedServices": {
     "atom-ide-busy-signal": {
       "versions": {

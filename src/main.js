@@ -9,6 +9,7 @@ import type {
 
 import CodeFormatManager from './CodeFormatManager';
 
+export { default as config } from "./config.json"
 
 let codeFormatManager: CodeFormatManager
 
