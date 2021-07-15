@@ -394,5 +394,5 @@ function isBracketPair(typedText: string): boolean {
     return false
   }
   const validBracketPairs: Array<string> = atom.config.get("bracket-matcher.autocompleteCharacters") as any
-  return validBracketPairs.indexOf(typedText) !== -1
+  return validBracketPairs.includes(typedText)
 }
