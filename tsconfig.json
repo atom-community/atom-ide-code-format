@@ -28,7 +28,8 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "importHelpers": false,
-    "outDir": "../dist"
+    "outDir": "./dist"
   },
-  "compileOnSave": true
+  "compileOnSave": true,
+  "include": ["src/**/*", "spec/**/*"]
 }
