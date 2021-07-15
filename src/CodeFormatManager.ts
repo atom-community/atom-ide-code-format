@@ -13,7 +13,6 @@ import { getLogger } from "log4js"
 import { ProviderRegistry } from "atom-ide-base/commons-atom/ProviderRegistry"
 import { applyTextEditsToBuffer } from "@atom-ide-community/nuclide-commons-atom/text-edit"
 import nuclideUri from "@atom-ide-community/nuclide-commons/nuclideUri"
-import UniversalDisposable from "@atom-ide-community/nuclide-commons/UniversalDisposable"
 
 // Save events are critical, so don't allow providers to block them.
 export const SAVE_TIMEOUT = 2500
@@ -247,7 +246,7 @@ export default class CodeFormatManager {
 
   consumeBusySignal(busySignalService: BusySignalService): Disposable {
     this._busySignalService = busySignalService
-    return new UniversalDisposable(() => {
+    return new Disposable(() => {
       this._busySignalService = null
     })
   }
