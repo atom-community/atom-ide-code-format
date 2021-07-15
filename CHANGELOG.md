@@ -1,3 +1,12 @@
+## [1.0.2](https://github.com/atom-community/atom-ide-code-format/compare/v1.0.1...v1.0.2) (2021-07-15)
+
+
+### Bug Fixes
+
+* fix and optimize _formatCodeInTextEditor ([2607425](https://github.com/atom-community/atom-ide-code-format/commit/2607425a8516718d67c9506fc8e233852e194c7e))
+* optimize _formatCodeOnTypeInTextEditor ([16009d4](https://github.com/atom-community/atom-ide-code-format/commit/16009d4b247129ca599ce16165866d35aade1ba1))
+* set save on type to false ([29b83d3](https://github.com/atom-community/atom-ide-code-format/commit/29b83d354dbdc5f2a5ff44e31e285e899c60f60c))
+
 ## [1.0.1](https://github.com/atom-community/atom-ide-code-format/compare/v1.0.0...v1.0.1) (2021-07-15)
 
 

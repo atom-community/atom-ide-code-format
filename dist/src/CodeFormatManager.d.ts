@@ -2,7 +2,7 @@ import { Range, CompositeDisposable, TextEditor, Disposable, BufferStoppedChangi
 import type { TextEdit, BusySignalService } from "atom-ide-base";
 import type { FileCodeFormatProvider, OnSaveCodeFormatProvider, OnTypeCodeFormatProvider, RangeCodeFormatProvider } from "./types";
 import { ProviderRegistry } from "atom-ide-base/commons-atom/ProviderRegistry";
-export declare const SAVE_TIMEOUT = 2500;
+export declare const SAVE_TIMEOUT = 500;
 export default class CodeFormatManager {
     _subscriptions: CompositeDisposable;
     _rangeProviders: ProviderRegistry<RangeCodeFormatProvider>;
@@ -11,8 +11,8 @@ export default class CodeFormatManager {
     _onSaveProviders: ProviderRegistry<OnSaveCodeFormatProvider>;
     _busySignalService: BusySignalService | undefined;
     constructor();
-    _formatCodeInTextEditor(editor: TextEditor, range?: Range): Promise<Array<TextEdit>>;
-    _formatCodeOnTypeInTextEditor(editor: TextEditor, aggregatedEvent: BufferStoppedChangingEvent): Promise<Array<TextEdit>>;
+    _formatCodeInTextEditor(editor: TextEditor, selectionRange?: Range): Promise<Array<TextEdit>>;
+    _formatCodeOnTypeInTextEditor(editor: TextEditor, { changes }: BufferStoppedChangingEvent): Promise<Array<TextEdit>>;
     _formatCodeOnSaveInTextEditor(editor: TextEditor): Promise<TextEdit[]>;
     _reportBusy<T>(editor: TextEditor, promise: Promise<T>, revealTooltip?: boolean): Promise<T>;
     addRangeProvider(provider: RangeCodeFormatProvider): Disposable;
