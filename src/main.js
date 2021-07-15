@@ -1,4 +1,4 @@
-import type {BusySignalService} from '../../atom-ide-busy-signal/lib/types';
+import type {BusySignalService} from 'atom-ide-base';
 import type {
   CodeFormatProvider,
   RangeCodeFormatProvider,
@@ -7,7 +7,7 @@ import type {
   OnSaveCodeFormatProvider,
 } from './types';
 
-import createPackage from 'nuclide-commons-atom/createPackage';
+import createPackage from '@atom-ide-community/nuclide-commons-atom/createPackage';
 import CodeFormatManager from './CodeFormatManager';
 
 class Activation {

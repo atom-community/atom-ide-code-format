@@ -1,7 +1,7 @@
 import {Range} from 'atom';
-import {observeTextEditors} from 'nuclide-commons-atom/FileEventHandlers';
+import {observeTextEditors} from '@atom-ide-community/nuclide-commons-atom/FileEventHandlers';
 import {SAVE_TIMEOUT} from '../dist/CodeFormatManager';
-import UniversalDisposable from 'nuclide-commons/UniversalDisposable';
+import UniversalDisposable from '@atom-ide-community/nuclide-commons/UniversalDisposable';
 import temp from 'temp';
 import * as config from '../dist/config';
 import CodeFormatManager from '../dist/CodeFormatManager';

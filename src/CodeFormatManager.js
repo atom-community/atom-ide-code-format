@@ -1,5 +1,5 @@
-import type {TextEdit} from 'nuclide-commons-atom/text-edit';
-import type {BusySignalService} from '../../atom-ide-busy-signal/lib/types';
+import type {TextEdit} from '@atom-ide-community/nuclide-commons-atom/text-edit';
+import type {BusySignalService} from 'atom-ide-base';
 import type {
   FileCodeFormatProvider,
   OnSaveCodeFormatProvider,
@@ -8,18 +8,18 @@ import type {
 } from './types';
 
 import nullthrows from 'nullthrows';
-import {registerOnWillSave} from 'nuclide-commons-atom/FileEventHandlers';
+import {registerOnWillSave} from '@atom-ide-community/nuclide-commons-atom/FileEventHandlers';
 import {getFormatOnSave, getFormatOnType} from './config';
 import {Range} from 'atom';
 import {getLogger} from 'log4js';
-import ProviderRegistry from 'nuclide-commons-atom/ProviderRegistry';
-import {applyTextEditsToBuffer} from 'nuclide-commons-atom/text-edit';
-import {observeEditorDestroy} from 'nuclide-commons-atom/text-editor';
-import {observableFromSubscribeFunction} from 'nuclide-commons/event';
-import nuclideUri from 'nuclide-commons/nuclideUri';
-import {completingSwitchMap, microtask} from 'nuclide-commons/observable';
-import UniversalDisposable from 'nuclide-commons/UniversalDisposable';
-import {Observable} from 'rxjs';
+import ProviderRegistry from '@atom-ide-community/nuclide-commons-atom/ProviderRegistry';
+import {applyTextEditsToBuffer} from '@atom-ide-community/nuclide-commons-atom/text-edit';
+import {observeEditorDestroy} from '@atom-ide-community/nuclide-commons-atom/text-editor';
+import {observableFromSubscribeFunction} from '@atom-ide-community/nuclide-commons/event';
+import nuclideUri from '@atom-ide-community/nuclide-commons/nuclideUri';
+import {completingSwitchMap, microtask} from '@atom-ide-community/nuclide-commons/observable';
+import UniversalDisposable from '@atom-ide-community/nuclide-commons/UniversalDisposable';
+import {Observable} from 'rxjs-compat/bundles/rxjs-compat.umd.min.js';
 
 // Save events are critical, so don't allow providers to block them.
 export const SAVE_TIMEOUT = 2500;

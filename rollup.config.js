@@ -1,6 +1,6 @@
 import { createPlugins } from "rollup-plugin-atomic"
 
-const plugins = createPlugins(["js", "babel"])
+const plugins = createPlugins(["js", "babel", "json"])
 
 const RollupConfig = [
   {
@@ -13,7 +13,7 @@ const RollupConfig = [
       },
     ],
     // loaded externally
-    external: ["atom"],
+    external: ["atom", "log4js", "rxjs-compat"],
     plugins,
   },
 ]
