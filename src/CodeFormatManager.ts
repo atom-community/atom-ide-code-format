@@ -23,7 +23,7 @@ export default class CodeFormatManager {
   _fileProviders: ProviderRegistry<FileCodeFormatProvider>
   _onTypeProviders: ProviderRegistry<OnTypeCodeFormatProvider>
   _onSaveProviders: ProviderRegistry<OnSaveCodeFormatProvider>
-  _busySignalService: BusySignalService | undefined | null
+  _busySignalService: BusySignalService | undefined
 
   constructor() {
     /**
@@ -34,9 +34,6 @@ export default class CodeFormatManager {
       // Events from the explicit Atom command.
       atom.commands.add("atom-text-editor", "code-format:format-code", async (event) => {
         const editorElement = event.currentTarget
-        if (!editorElement) {
-          return
-        }
         const editor = editorElement.getModel()
         // Make sure we halt everything when the editor gets destroyed.
         const edits = await this._formatCodeInTextEditor(editor)
@@ -85,7 +82,7 @@ export default class CodeFormatManager {
   // Return the text edits used to format code in the editor specified.
   async _formatCodeInTextEditor(editor: TextEditor, range?: Range): Promise<Array<TextEdit>> {
     const buffer = editor.getBuffer()
-    const selectionRange = range || editor.getSelectedBufferRange()
+    const selectionRange = range ?? editor.getSelectedBufferRange()
     const { start: selectionStart, end: selectionEnd } = selectionRange
     let formatRange: Range
     if (selectionRange.isEmpty()) {
@@ -216,9 +213,9 @@ export default class CodeFormatManager {
 
   _reportBusy<T>(editor: TextEditor, promise: Promise<T>, revealTooltip: boolean = true): Promise<T> {
     const busySignalService = this._busySignalService
-    if (busySignalService != null) {
+    if (busySignalService !== undefined) {
       const path = editor.getPath()
-      const displayPath = path != null ? nuclideUri.basename(path) : "<untitled>"
+      const displayPath = path !== undefined ? nuclideUri.basename(path) : "<untitled>"
       return busySignalService.reportBusyWhile(`Formatting code in ${displayPath}`, () => promise, { revealTooltip })
     }
     return promise
@@ -243,7 +240,7 @@ export default class CodeFormatManager {
   consumeBusySignal(busySignalService: BusySignalService): Disposable {
     this._busySignalService = busySignalService
     return new Disposable(() => {
-      this._busySignalService = null
+      this._busySignalService = undefined
     })
   }
 
@@ -271,7 +268,7 @@ function shouldFormatOnType(event: TextChange): boolean {
     // We either just deleted something or replaced a selection. For the time
     // being, we're not going to issue a reformat in that case.
     return false
-  } else if (event.oldText === "" && event.newText === "") {
+  } else if (event.newText === "") {
     // Not sure what happened here; why did we get an event in this case? Bail
     // for safety.
     return false
@@ -286,10 +283,10 @@ function shouldFormatOnType(event: TextChange): boolean {
  * assume that any pair of brackets that bracket-matcher recognizes was a pair matched by the package.
  */
 function isBracketPair(typedText: string): boolean {
-  if (atom.packages.getActivePackage("bracket-matcher") == null) {
+  if (atom.packages.getActivePackage("bracket-matcher") === undefined) {
     return false
   }
-  const validBracketPairs: Array<string> = atom.config.get("bracket-matcher.autocompleteCharacters") as any
+  const validBracketPairs = atom.config.get("bracket-matcher.autocompleteCharacters") as Array<string>
   return validBracketPairs.includes(typedText)
 }
 
