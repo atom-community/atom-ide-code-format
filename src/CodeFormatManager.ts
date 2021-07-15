@@ -41,7 +41,7 @@ type FormatEvent =
     }
 
 export default class CodeFormatManager {
-  _subscriptions: UniversalDisposable
+  _subscriptions = new UniversalDisposable()
   _rangeProviders: ProviderRegistry<RangeCodeFormatProvider>
   _fileProviders: ProviderRegistry<FileCodeFormatProvider>
   _onTypeProviders: ProviderRegistry<OnTypeCodeFormatProvider>
@@ -50,7 +50,6 @@ export default class CodeFormatManager {
 
   constructor() {
     this._subscriptions = new UniversalDisposable(
-      this._subscribeToEvents(),
       registerOnWillSave(this._onWillSaveProvider())
     )
     this._rangeProviders = new ProviderRegistry()
@@ -65,15 +64,27 @@ export default class CodeFormatManager {
    */
   _subscribeToEvents(): Subscription {
     // Events from the explicit Atom command.
-    const commandEvents = observableFromSubscribeFunction((callback) =>
-      atom.commands.add("atom-text-editor", "code-format:format-code", callback)
-    ).switchMap(() => {
-      const editor = atom.workspace.getActiveTextEditor()
-      if (!editor) {
-        return Observable.empty()
-      }
-      return Observable.of({ type: "command", editor })
-    })
+    this._subscriptions.add(
+      atom.commands.add("atom-text-editor", "code-format:format-code", async (event) => {
+        const editor = atom.workspace.getActiveTextEditor()
+        if (!editor) {
+          return
+        }
+        // Make sure we halt everything when the editor gets destroyed.
+        const edits = await this._formatCodeInTextEditor(editor)
+        try {
+          applyTextEditsToBuffer(editor.getBuffer(), edits).forEach((result) => {
+            if (!result) {
+              throw new Error("No code formatting providers found!")
+            }
+          })
+        } catch (err) {
+          atom.notifications.addError(`Failed to format code: ${err.message}`, {
+            detail: err.detail,
+          })
+        }
+      })
+    )
 
     // Events from editor actions (saving, typing).
     const editorEvents = observableFromSubscribeFunction((cb) => atom.workspace.observeTextEditors(cb)).mergeMap(
@@ -81,7 +92,7 @@ export default class CodeFormatManager {
     )
 
     return (
-      Observable.merge(commandEvents, editorEvents)
+      editorEvents
         // Group events by buffer to prevent simultaneous formatting operations.
         .groupBy(
           (event) => event.editor.getBuffer(),
@@ -99,21 +110,6 @@ export default class CodeFormatManager {
   async _handleEvent(event: FormatEvent) {
     const { editor } = event
     switch (event.type) {
-      case "command": {
-        const edits = await this._formatCodeInTextEditor(editor)
-        try {
-          applyTextEditsToBuffer(editor.getBuffer(), edits).forEach((result) => {
-            if (!result) {
-              throw new Error("No code formatting providers found!")
-            }
-          })
-        } catch (err) {
-          atom.notifications.addError(`Failed to format code: ${err.message}`, {
-            detail: err.detail,
-          })
-        }
-        break
-      }
       case "type":
         return this._formatCodeOnTypeInTextEditor(editor, event.edit).catch((err) => {
           getLogger("code-format").warn("Failed to format code on type:", err)
