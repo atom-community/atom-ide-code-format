@@ -46,8 +46,8 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # - name: Format ✨
-      #   run: npm run test.format
+      - name: Format ✨
+        run: npm run test.format
 
       - name: Lint ✨
         run: npm run test.lint
@@ -76,10 +76,3 @@ jobs:
       #   env:
       #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       #     ATOM_ACCESS_TOKEN: ${{ secrets.ATOM_ACCESS_TOKEN  }}
-
-  Skip:
-    if: contains(github.event.head_commit.message, '[skip ci]')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Skip CI 🚫
-        run: echo skip ci
