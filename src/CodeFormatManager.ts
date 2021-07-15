@@ -96,25 +96,24 @@ export default class CodeFormatManager {
     )
   }
 
-  _handleEvent(event: FormatEvent): Observable<unknown> {
+  async _handleEvent(event: FormatEvent) {
     const { editor } = event
     switch (event.type) {
-      case "command":
-        return this._formatCodeInTextEditor(editor)
-          .do((edits) => {
-            applyTextEditsToBuffer(editor.getBuffer(), edits)
-          })
-          .map((result) => {
+      case "command": {
+        const edits = await this._formatCodeInTextEditor(editor)
+        try {
+          applyTextEditsToBuffer(editor.getBuffer(), edits).forEach((result) => {
             if (!result) {
               throw new Error("No code formatting providers found!")
             }
           })
-          .catch((err) => {
-            atom.notifications.addError(`Failed to format code: ${err.message}`, {
-              detail: err.detail,
-            })
-            return Observable.empty()
+        } catch (err) {
+          atom.notifications.addError(`Failed to format code: ${err.message}`, {
+            detail: err.detail,
           })
+        }
+        break
+      }
       case "type":
         return this._formatCodeOnTypeInTextEditor(editor, event.edit).catch((err) => {
           getLogger("code-format").warn("Failed to format code on type:", err)
