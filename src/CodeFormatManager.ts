@@ -69,7 +69,11 @@ export default class CodeFormatManager {
       }),
 
       // Format on save
-      registerOnWillSave(this._onWillSaveProvider())
+      registerOnWillSave(() => ({
+        priority: 0,
+        timeout: SAVE_TIMEOUT,
+        callback: this._formatCodeOnSaveInTextEditor.bind(this),
+      }))
     )
 
     this._rangeProviders = new ProviderRegistry()
@@ -191,14 +195,6 @@ export default class CodeFormatManager {
         editor.setCursorBufferPosition(cursorPosition)
       }
       return edits
-    }
-  }
-
-  _onWillSaveProvider() {
-    return {
-      priority: 0,
-      timeout: SAVE_TIMEOUT,
-      callback: this._formatCodeOnSaveInTextEditor.bind(this),
     }
   }
 
