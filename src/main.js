@@ -7,17 +7,16 @@ import type {
   OnSaveCodeFormatProvider,
 } from './types';
 
-import createPackage from '@atom-ide-community/nuclide-commons-atom/createPackage';
 import CodeFormatManager from './CodeFormatManager';
 
-class Activation {
-  codeFormatManager: CodeFormatManager;
 
-  constructor() {
-    this.codeFormatManager = new CodeFormatManager();
-  }
+let codeFormatManager: CodeFormatManager
 
-  consumeLegacyProvider(provider: CodeFormatProvider): IDisposable {
+export function activate() {
+  codeFormatManager = new CodeFormatManager();
+}
+
+export function consumeLegacyProvider(provider: CodeFormatProvider): IDisposable {
     // Legacy providers used `selector` / `inclusionPriority`.
     // $FlowIgnore legacy API compatability.
     provider.grammarScopes =
@@ -32,40 +31,37 @@ class Activation {
           ? provider.inclusionPriority
           : 0;
     if (provider.formatCode) {
-      return this.consumeRangeProvider(provider);
+      return consumeRangeProvider(provider);
     } else if (provider.formatEntireFile) {
-      return this.consumeFileProvider(provider);
+      return consumeFileProvider(provider);
     } else if (provider.formatAtPosition) {
-      return this.consumeOnTypeProvider(provider);
+      return consumeOnTypeProvider(provider);
     } else if (provider.formatOnSave) {
-      return this.consumeOnSaveProvider(provider);
+      return consumeOnSaveProvider(provider);
     }
     throw new Error('Invalid code format provider');
-  }
-
-  consumeRangeProvider(provider: RangeCodeFormatProvider): IDisposable {
-    return this.codeFormatManager.addRangeProvider(provider);
-  }
-
-  consumeFileProvider(provider: FileCodeFormatProvider): IDisposable {
-    return this.codeFormatManager.addFileProvider(provider);
-  }
-
-  consumeOnTypeProvider(provider: OnTypeCodeFormatProvider): IDisposable {
-    return this.codeFormatManager.addOnTypeProvider(provider);
-  }
-
-  consumeOnSaveProvider(provider: OnSaveCodeFormatProvider): IDisposable {
-    return this.codeFormatManager.addOnSaveProvider(provider);
-  }
-
-  consumeBusySignal(busySignalService: BusySignalService): IDisposable {
-    return this.codeFormatManager.consumeBusySignal(busySignalService);
-  }
-
-  dispose() {
-    this.codeFormatManager.dispose();
-  }
 }
 
-createPackage(module.exports, Activation);
+export function consumeRangeProvider(provider: RangeCodeFormatProvider): IDisposable {
+    return codeFormatManager.addRangeProvider(provider);
+}
+
+export function consumeFileProvider(provider: FileCodeFormatProvider): IDisposable {
+    return codeFormatManager.addFileProvider(provider);
+}
+
+export function consumeOnTypeProvider(provider: OnTypeCodeFormatProvider): IDisposable {
+    return codeFormatManager.addOnTypeProvider(provider);
+}
+
+export function consumeOnSaveProvider(provider: OnSaveCodeFormatProvider): IDisposable {
+    return codeFormatManager.addOnSaveProvider(provider);
+}
+
+export function consumeBusySignal(busySignalService: BusySignalService): IDisposable {
+    return codeFormatManager.consumeBusySignal(busySignalService);
+}
+
+export function deactivate() {
+    codeFormatManager.dispose();
+}
