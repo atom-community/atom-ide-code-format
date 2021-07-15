@@ -62,7 +62,7 @@
   "dependencies": {
     "@atom-ide-community/nuclide-commons": "^0.8.3",
     "@atom-ide-community/nuclide-commons-atom": "^0.8.3",
-    "log4js": "1.1.1"
+    "log4js": "6.3.0"
   },
   "devDependencies": {
     "@artemv/wait-until-promise": "^1.1.2",
