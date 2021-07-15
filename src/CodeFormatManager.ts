@@ -261,27 +261,20 @@ export default class CodeFormatManager {
     }
   }
 
-  _formatCodeOnSaveInTextEditor(editor: TextEditor): Observable<TextEdit> {
+  async _formatCodeOnSaveInTextEditor(editor: TextEditor): Promise<TextEdit[]> {
     const saveProviders = [...this._onSaveProviders.getAllProvidersForEditor(editor)]
     if (saveProviders.length > 0) {
-      return Observable.defer(() =>
-        this._reportBusy(editor, Promise.all(saveProviders.map((p) => p.formatOnSave(editor))), false)
+      const allEdits = await this._reportBusy(
+        editor,
+        Promise.all(saveProviders.map((p) => p.formatOnSave(editor))),
+        false
       )
-        .switchMap((allEdits) => {
-          const firstNonEmpty = allEdits.find((edits) => edits.length > 0)
-          if (firstNonEmpty == null) {
-            return Observable.empty()
-          } else {
-            return Observable.of(firstNonEmpty)
-          }
-        })
-        .flatMap((edits) => Observable.of(...edits))
+      const edits = allEdits.filter((edits) => edits.length > 0)
+      return edits.flat()
     } else if (getFormatOnSave(editor)) {
-      return this._formatCodeInTextEditor(editor, editor.getBuffer().getRange()).flatMap((edits) =>
-        Observable.of(...edits)
-      )
+      return this._formatCodeInTextEditor(editor, editor.getBuffer().getRange())
     }
-    return Observable.empty()
+    return []
   }
 
   _reportBusy<T>(editor: TextEditor, promise: Promise<T>, revealTooltip: boolean = true): Promise<T> {
