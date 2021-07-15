@@ -10,6 +10,8 @@ import waitsFor from '@artemv/wait-until-promise';
 
 const sleep = n => new Promise(r => setTimeout(r, n));
 
+jasmine.DEFAULT_TIMEOUT_INTERVAL = SAVE_TIMEOUT + 100
+
 describe('CodeFormatManager', () => {
   let textEditor;
   let manager;
@@ -46,7 +48,7 @@ describe('CodeFormatManager', () => {
       atom.views.getView(textEditor),
       'code-format:format-code',
     );
-    await waitsFor(() => textEditor.getText() === 'def');
+    await waitsFor(() => textEditor.getText() === 'def', SAVE_TIMEOUT);
   });
 
   it('format an editor using formatEntireFile', async () => {
@@ -61,7 +63,7 @@ describe('CodeFormatManager', () => {
       atom.views.getView(textEditor),
       'code-format:format-code',
     );
-    await waitsFor(() => textEditor.getText() === 'ghi');
+    await waitsFor(() => textEditor.getText() === 'ghi', SAVE_TIMEOUT);
   });
 
   it('formats an editor on type', async () => {
@@ -87,7 +89,7 @@ describe('CodeFormatManager', () => {
     textEditor.insertText('b');
     textEditor.insertText('c');
 
-    await waitsFor(() => textEditor.getText() === 'def');
+    await waitsFor(() => textEditor.getText() === 'def', SAVE_TIMEOUT);
     // Debouncing should ensure only one format call.
     expect(spy.mock.calls.length).toBe(1);
   });
@@ -128,7 +130,7 @@ describe('CodeFormatManager', () => {
 
     // Wait until the buffer has been saved and verify it has been saved exactly
     // once.
-    await waitsFor(() => spy.mock.calls.length > 0);
+    await waitsFor(() => spy.mock.calls.length > 0, SAVE_TIMEOUT);
     expect(spy.mock.calls.length).toBe(1);
   });
 });
