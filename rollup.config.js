@@ -13,7 +13,7 @@ const RollupConfig = [
       },
     ],
     // loaded externally
-    external: ["atom", "log4js", "rxjs-compat"],
+    external: ["atom", "log4js", "rxjs-compat/bundles/rxjs-compat.umd.min.js"],
     plugins,
   },
 ]
