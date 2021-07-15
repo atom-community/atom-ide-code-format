@@ -1,6 +1,6 @@
 {
   "name": "atom-ide-code-format",
-  "displayName": "Code Formatting",
+  "displayName": "Code Formatting for Atom IDE",
   "repository": "https://github.com/atom-community/atom-ide-code-format",
   "main": "./dist/main.js",
   "version": "0.0.0",

@@ -28,8 +28,8 @@ jobs:
         run: |
           apm install
 
-      - name: Run tests 👩🏾‍💻
-        run: npm run test
+      # - name: Run tests 👩🏾‍💻
+      #   run: npm run test
 
   Lint:
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
@@ -67,12 +67,11 @@ jobs:
         run: npm install
       - name: Build and Commit
         run: npm run build-commit
-      # NOTE: uncomment when ready
-      # - name: Release 🎉
-      #   uses: cycjimmy/semantic-release-action@v2
-      #   with:
-      #     extends: |
-      #       @semantic-release/apm-config
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #     ATOM_ACCESS_TOKEN: ${{ secrets.ATOM_ACCESS_TOKEN  }}
+      - name: Release 🎉
+        uses: cycjimmy/semantic-release-action@v2
+        with:
+          extends: |
+            @semantic-release/apm-config
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ATOM_ACCESS_TOKEN: ${{ secrets.ATOM_ACCESS_TOKEN  }}
