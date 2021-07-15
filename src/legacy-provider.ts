@@ -14,10 +14,10 @@ export function consumeLegacyProvider(provider: CodeFormatProvider): Disposable 
   provider.priority =
     provider.priority != null
       ? provider.priority
-      :     // @ts-ignore
+      : // @ts-ignore
       provider.inclusionPriority != null
-      // @ts-ignore
-      ? provider.inclusionPriority
+      ? // @ts-ignore
+        provider.inclusionPriority
       : 0
   if ("formatCode" in provider) {
     return consumeRangeProvider(provider)

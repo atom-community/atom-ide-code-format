@@ -142,14 +142,6 @@ export default class CodeFormatManager {
     }
   }
 
-  // Checks whether contents are same in the buffer post-format, throwing if
-  // anything has changed.
-  _checkContentsAreSame(before: string, after: string): void {
-    if (before !== after) {
-      throw new Error("The file contents were changed before formatting was complete.")
-    }
-  }
-
   // Return the text edits used to format code in the editor specified.
   _formatCodeInTextEditor(editor: TextEditor, range?: Range): Observable<Array<TextEdit>> {
     return Observable.defer(() => {
@@ -270,7 +262,7 @@ export default class CodeFormatManager {
           if (edits.length === 0) {
             return
           }
-          this._checkContentsAreSame(contents, editor.getText())
+          _checkContentsAreSame(contents, editor.getText())
           // Note that this modification is not in a transaction, so it applies as a
           // separate editing event than the character typing. This means that you
           // can undo just the formatting by attempting to undo once, and then undo
@@ -395,4 +387,12 @@ function isBracketPair(typedText: string): boolean {
   }
   const validBracketPairs: Array<string> = atom.config.get("bracket-matcher.autocompleteCharacters") as any
   return validBracketPairs.includes(typedText)
+}
+
+// Checks whether contents are same in the buffer post-format, throwing if
+// anything has changed.
+function _checkContentsAreSame(before: string, after: string): void {
+  if (before !== after) {
+    throw new Error("The file contents were changed before formatting was complete.")
+  }
 }
