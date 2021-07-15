@@ -45,11 +45,10 @@ export default class CodeFormatManager {
         // Make sure we halt everything when the editor gets destroyed.
         const edits = await this._formatCodeInTextEditor(editor)
         try {
-          applyTextEditsToBuffer(editor.getBuffer(), edits).forEach((result) => {
-            if (!result) {
-              throw new Error("No code formatting providers found!")
-            }
-          })
+          const success = applyTextEditsToBuffer(editor.getBuffer(), edits) as boolean
+          if (!success) {
+            throw new Error("No code formatting providers found!")
+          }
         } catch (err) {
           atom.notifications.addError(`Failed to format code: ${err.message}`, {
             detail: err.detail,
