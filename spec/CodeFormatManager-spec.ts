@@ -1,4 +1,4 @@
-import { Range } from "atom"
+import { Range, TextEditor } from "atom"
 import { observeTextEditors } from "@atom-ide-community/nuclide-commons-atom/FileEventHandlers"
 import CodeFormatManager, { SAVE_TIMEOUT } from "../src/CodeFormatManager"
 import UniversalDisposable from "@atom-ide-community/nuclide-commons/UniversalDisposable"
@@ -8,9 +8,9 @@ import { waitFor, sleep } from "./utils"
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = SAVE_TIMEOUT + 100
 describe("CodeFormatManager", () => {
-  let textEditor
-  let manager
-  let disposables
+  let textEditor: TextEditor
+  let manager: CodeFormatManager
+  let disposables: UniversalDisposable
   beforeEach(async () => {
     manager = new CodeFormatManager()
     disposables = new UniversalDisposable(observeTextEditors())
@@ -18,7 +18,7 @@ describe("CodeFormatManager", () => {
     const file = temp.openSync()
     textEditor = await atom.workspace.open(file.path)
   })
-  afterEach(async () => {
+  afterEach(() => {
     manager.dispose()
     disposables.dispose()
   })
@@ -36,7 +36,7 @@ describe("CodeFormatManager", () => {
         ]),
     })
     textEditor.setText("abc")
-    atom.commands.dispatch(atom.views.getView(textEditor), "code-format:format-code")
+    await atom.commands.dispatch(atom.views.getView(textEditor), "code-format:format-code")
     await waitFor(() => textEditor.getText() === "def")
   })
   it("format an editor using formatEntireFile", async () => {
@@ -49,7 +49,7 @@ describe("CodeFormatManager", () => {
         }),
     })
     textEditor.setText("abc")
-    atom.commands.dispatch(atom.views.getView(textEditor), "code-format:format-code")
+    await atom.commands.dispatch(atom.views.getView(textEditor), "code-format:format-code")
     await waitFor(() => textEditor.getText() === "ghi")
   })
   it("formats an editor on type", async () => {
@@ -106,6 +106,7 @@ describe("CodeFormatManager", () => {
       },
     })
     const spy = spyOn(textEditor.getBuffer(), "save")
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
     textEditor.save()
     // Wait until the buffer has been saved and verify it has been saved exactly
     // once.
