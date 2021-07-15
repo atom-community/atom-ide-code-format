@@ -2,7 +2,7 @@
   "formatOnSave": {
     "title": "Format on Save",
     "type": "boolean",
-    "default": false,
+    "default": true,
     "description": "Automatically format code upon saving for supported languages."
   },
   "formatOnType": {
