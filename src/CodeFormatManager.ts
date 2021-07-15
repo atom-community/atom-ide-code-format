@@ -7,16 +7,13 @@ import type {
   RangeCodeFormatProvider,
 } from "./types"
 
-import nullthrows from "nullthrows"
 import { registerOnWillSave } from "@atom-ide-community/nuclide-commons-atom/FileEventHandlers"
 import { getFormatOnSave, getFormatOnType } from "./config"
 import { getLogger } from "log4js"
 import { ProviderRegistry } from "atom-ide-base/commons-atom/ProviderRegistry"
 import { applyTextEditsToBuffer } from "@atom-ide-community/nuclide-commons-atom/text-edit"
 import nuclideUri from "@atom-ide-community/nuclide-commons/nuclideUri"
-import { microtask } from "@atom-ide-community/nuclide-commons/observable"
 import UniversalDisposable from "@atom-ide-community/nuclide-commons/UniversalDisposable"
-import { Observable } from "rxjs-compat/bundles/rxjs-compat.umd.min.js"
 
 // Save events are critical, so don't allow providers to block them.
 export const SAVE_TIMEOUT = 2500
@@ -58,10 +55,12 @@ export default class CodeFormatManager {
 
       // Events from typing in the editor
       atom.workspace.observeTextEditors((editor) => {
-        const onChangeSubs = editor.getBuffer().onDidStopChanging((event) => {
-          this._formatCodeOnTypeInTextEditor(editor, event).catch((err) => {
+        const onChangeSubs = editor.getBuffer().onDidStopChanging(async (event) => {
+          try {
+            await this._formatCodeOnTypeInTextEditor(editor, event)
+          } catch (err) {
             getLogger("code-format").warn("Failed to format code on type:", err)
-          })
+          }
         })
         // Make sure we halt everything when the editor gets destroyed.
         // We need to capture when editors are about to be destroyed in order to
@@ -134,78 +133,66 @@ export default class CodeFormatManager {
     return edits.flat() // TODO or [0]?
   }
 
-  _formatCodeOnTypeInTextEditor(
+  async _formatCodeOnTypeInTextEditor(
     editor: TextEditor,
     aggregatedEvent: BufferStoppedChangingEvent
-  ): Observable<Array<TextEdit>> {
-    return Observable.defer(() => {
-      // Don't try to format changes with multiple cursors.
-      if (aggregatedEvent.changes.length !== 1) {
-        return Observable.empty()
+  ): Promise<Array<TextEdit>> {
+    // Don't try to format changes with multiple cursors.
+    if (aggregatedEvent.changes.length !== 1) {
+      return []
+    }
+    const event = aggregatedEvent.changes[0]
+    // This also ensures the non-emptiness of event.newText for below.
+    if (!shouldFormatOnType(event) || !getFormatOnType()) {
+      return []
+    }
+    // In the case of bracket-matching, we use the last character because that's
+    // the character that will usually cause a reformat (i.e. `}` instead of `{`).
+    const character = event.newText[event.newText.length - 1]
+
+    const providers = [...this._onTypeProviders.getAllProvidersForEditor(editor)]
+    if (providers.length === 0) {
+      return []
+    }
+
+    const contents = editor.getText()
+    const cursorPosition = editor.getCursorBufferPosition().copy()
+
+    // The bracket-matching package basically overwrites
+    //
+    //     editor.insertText('{');
+    //
+    // with
+    //
+    //     editor.insertText('{}');
+    //     cursor.moveLeft();
+    //
+    // We want to wait until the cursor has actually moved before we issue a
+    // format request, so that we format at the right position (and potentially
+    // also let any other event handlers have their go).
+    const allEdits = await Promise.all(
+      providers.map((p) => p.formatAtPosition(editor, editor.getCursorBufferPosition(), character))
+    )
+    const firstNonEmptyIndex = allEdits.findIndex((edits) => edits.length > 0)
+    if (firstNonEmptyIndex === -1) {
+      return []
+    } else {
+      const edits = allEdits[firstNonEmptyIndex]
+      const provider = providers[firstNonEmptyIndex]
+      _checkContentsAreSame(contents, editor.getText())
+      // Note that this modification is not in a transaction, so it applies as a
+      // separate editing event than the character typing. This means that you
+      // can undo just the formatting by attempting to undo once, and then undo
+      // your actual code by undoing again.
+      if (!applyTextEditsToBuffer(editor.getBuffer(), edits)) {
+        throw new Error("Could not apply edits to text buffer.")
       }
-      const event = aggregatedEvent.changes[0]
-      // This also ensures the non-emptiness of event.newText for below.
-      if (!shouldFormatOnType(event) || !getFormatOnType()) {
-        return Observable.empty()
+
+      if (provider.keepCursorPosition) {
+        editor.setCursorBufferPosition(cursorPosition)
       }
-      // In the case of bracket-matching, we use the last character because that's
-      // the character that will usually cause a reformat (i.e. `}` instead of `{`).
-      const character = event.newText[event.newText.length - 1]
-
-      const providers = [...this._onTypeProviders.getAllProvidersForEditor(editor)]
-      if (providers.length === 0) {
-        return Observable.empty()
-      }
-
-      const contents = editor.getText()
-      const cursorPosition = editor.getCursorBufferPosition().copy()
-
-      // The bracket-matching package basically overwrites
-      //
-      //     editor.insertText('{');
-      //
-      // with
-      //
-      //     editor.insertText('{}');
-      //     cursor.moveLeft();
-      //
-      // We want to wait until the cursor has actually moved before we issue a
-      // format request, so that we format at the right position (and potentially
-      // also let any other event handlers have their go).
-      return microtask
-        .switchMap(() =>
-          Promise.all(providers.map((p) => p.formatAtPosition(editor, editor.getCursorBufferPosition(), character)))
-        )
-        .switchMap((allEdits) => {
-          const firstNonEmptyIndex = allEdits.findIndex((edits) => edits.length > 0)
-          if (firstNonEmptyIndex === -1) {
-            return Observable.empty()
-          } else {
-            return Observable.of({
-              edits: nullthrows(allEdits[firstNonEmptyIndex]),
-              provider: providers[firstNonEmptyIndex],
-            })
-          }
-        })
-        .do(({ edits, provider }) => {
-          if (edits.length === 0) {
-            return
-          }
-          _checkContentsAreSame(contents, editor.getText())
-          // Note that this modification is not in a transaction, so it applies as a
-          // separate editing event than the character typing. This means that you
-          // can undo just the formatting by attempting to undo once, and then undo
-          // your actual code by undoing again.
-          if (!applyTextEditsToBuffer(editor.getBuffer(), edits)) {
-            throw new Error("Could not apply edits to text buffer.")
-          }
-
-          if (provider.keepCursorPosition) {
-            editor.setCursorBufferPosition(cursorPosition)
-          }
-        })
-        .map(({ edits }) => edits)
-    })
+      return edits
+    }
   }
 
   _onWillSaveProvider() {
