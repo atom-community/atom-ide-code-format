@@ -1,3 +1,4 @@
+"use babel"
 import {Range} from 'atom';
 import {observeTextEditors} from '@atom-ide-community/nuclide-commons-atom/FileEventHandlers';
 import {SAVE_TIMEOUT} from '../dist/CodeFormatManager';
@@ -5,7 +6,7 @@ import UniversalDisposable from '@atom-ide-community/nuclide-commons/UniversalDi
 import temp from 'temp';
 import * as config from '../dist/config';
 import CodeFormatManager from '../dist/CodeFormatManager';
-import waitsFor from '../../../../../jest/waits_for';
+import waitsFor from '@artemv/wait-until-promise';
 
 const sleep = n => new Promise(r => setTimeout(r, n));
 
@@ -64,7 +65,7 @@ describe('CodeFormatManager', () => {
   });
 
   it('formats an editor on type', async () => {
-    jest.spyOn(config, 'getFormatOnType').mockReturnValue(true);
+    spyOn(config, 'getFormatOnType').and.returnValue(true);
     const provider = {
       grammarScopes: ['text.plain.null-grammar'],
       priority: 1,
@@ -78,7 +79,7 @@ describe('CodeFormatManager', () => {
         ]),
       keepCursorPosition: false,
     };
-    const spy = jest.spyOn(provider, 'formatAtPosition');
+    const spy = spyOn(provider, 'formatAtPosition');
     manager.addOnTypeProvider(provider);
 
     textEditor.setText('a');
@@ -92,7 +93,7 @@ describe('CodeFormatManager', () => {
   });
 
   it('formats an editor on save', async () => {
-    jest.spyOn(config, 'getFormatOnSave').mockReturnValue(true);
+    spyOn(config, 'getFormatOnSave').and.returnValue(true);
     manager.addOnSaveProvider({
       grammarScopes: ['text.plain.null-grammar'],
       priority: 1,
@@ -112,7 +113,7 @@ describe('CodeFormatManager', () => {
   });
 
   it('should still save on timeout', async () => {
-    jest.spyOn(config, 'getFormatOnSave').mockReturnValue(true);
+    spyOn(config, 'getFormatOnSave').and.returnValue(true);
     manager.addRangeProvider({
       grammarScopes: ['text.plain.null-grammar'],
       priority: 1,
@@ -122,7 +123,7 @@ describe('CodeFormatManager', () => {
       },
     });
 
-    const spy = jest.spyOn(textEditor.getBuffer(), 'save');
+    const spy = spyOn(textEditor.getBuffer(), 'save');
     textEditor.save();
 
     // Wait until the buffer has been saved and verify it has been saved exactly
