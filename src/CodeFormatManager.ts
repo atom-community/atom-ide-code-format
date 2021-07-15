@@ -78,7 +78,7 @@ export default class CodeFormatManager {
 
     // Events from editor actions (saving, typing).
     const editorEvents = observableFromSubscribeFunction((cb) => atom.workspace.observeTextEditors(cb)).mergeMap(
-      (editor) => this._getEditorEventStream(editor)
+      (editor) => _getEditorEventStream(editor)
     )
 
     return (
@@ -94,22 +94,6 @@ export default class CodeFormatManager {
           events.let(completingSwitchMap((event) => this._handleEvent(event)))
         )
         .subscribe()
-    )
-  }
-
-  /** Returns a stream of all typing and saving operations from the editor. */
-  _getEditorEventStream(editor: TextEditor): Observable<FormatEvent> {
-    const changeEvents = observableFromSubscribeFunction((callback) => editor.getBuffer().onDidChangeText(callback))
-
-    // We need to capture when editors are about to be destroyed in order to
-    // interrupt any pending formatting operations. (Otherwise, we may end up
-    // attempting to save a destroyed editor!)
-    const willDestroyEvents = observableFromSubscribeFunction((cb) => atom.workspace.onWillDestroyPaneItem(cb)).filter(
-      (event) => event.item === editor
-    )
-
-    return Observable.merge(changeEvents.map((edit) => ({ type: "type", editor, edit }))).takeUntil(
-      Observable.merge(observeEditorDestroy(editor), willDestroyEvents)
     )
   }
 
@@ -395,4 +379,20 @@ function _checkContentsAreSame(before: string, after: string): void {
   if (before !== after) {
     throw new Error("The file contents were changed before formatting was complete.")
   }
+}
+
+/** Returns a stream of all typing and saving operations from the editor. */
+function _getEditorEventStream(editor: TextEditor): Observable<FormatEvent> {
+  const changeEvents = observableFromSubscribeFunction((callback) => editor.getBuffer().onDidChangeText(callback))
+
+  // We need to capture when editors are about to be destroyed in order to
+  // interrupt any pending formatting operations. (Otherwise, we may end up
+  // attempting to save a destroyed editor!)
+  const willDestroyEvents = observableFromSubscribeFunction((cb) => atom.workspace.onWillDestroyPaneItem(cb)).filter(
+    (event) => event.item === editor
+  )
+
+  return Observable.merge(changeEvents.map((edit) => ({ type: "type", editor, edit }))).takeUntil(
+    Observable.merge(observeEditorDestroy(editor), willDestroyEvents)
+  )
 }
