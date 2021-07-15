@@ -1,33 +1,31 @@
 {
   "name": "atom-ide-code-format",
   "displayName": "Code Formatting",
-  "repository": "https://github.com/facebook/nuclide",
-  "main": "./lib/main.js",
+  "repository": "https://github.com/atom-community/atom-ide-code-format",
+  "main": "./dist/main.js",
   "version": "0.0.0",
   "description": "Provides a code-formatting provider API",
-  "author": "NEEDS OWNER",
-  "atomTestRunner": "../../../scripts/atom-test-runner.js",
-  "nuclide": {
-    "configMetadata": {
-      "pathComponents": [
-        "IDE",
-        "Code Formatting"
-      ]
-    }
+  "scripts": {
+    "format": "prettier --write .",
+    "test.format": "prettier . --check",
+    "lint": "eslint . --fix",
+    "test.lint": "eslint .",
+    "test": "npm run build.unit && npm run test.only",
+    "test.only": "atom --test ./dist/spec",
+    "clean": "shx rm -rf dist",
+    "build.unit": "tsc -p ./tsconfig.json || echo done",
+    "dev": "npm run clean && cross-env NODE_ENV=development cross-env BABEL_KEEP_MODULES=true rollup -c -w",
+    "build": "npm run clean && cross-env NODE_ENV=production cross-env BABEL_KEEP_MODULES=true rollup -c ",
+    "build-commit": "build-commit -o dist",
+    "bump": "ncu -u -x coffeescript",
+    "prepare": "npm run build"
   },
-  "atomConfig": {
-    "formatOnSave": {
-      "title": "Format on Save",
-      "type": "boolean",
-      "default": false,
-      "description": "Automatically format code upon saving for supported languages."
-    },
-    "formatOnType": {
-      "title": "Format on Type",
-      "type": "boolean",
-      "default": true,
-      "description": "Automatically format code as you type it for supported languages."
-    }
+  "atomTestRunner": "./dist/spec/runner",
+  "activationHooks": [
+    "core:loaded-shell-environment"
+  ],
+  "engines": {
+    "atom": ">=1.52.0 <2.0.0"
   },
   "consumedServices": {
     "atom-ide-busy-signal": {
@@ -60,5 +58,31 @@
         "0.1.0": "consumeOnSaveProvider"
       }
     }
-  }
+  },
+  "dependencies": {
+    "@atom-ide-community/nuclide-commons": "^0.8.3",
+    "@atom-ide-community/nuclide-commons-atom": "^0.8.3",
+    "log4js": "1.1.1",
+    "nullthrows": "1.0.0",
+    "rxjs-compat": "6.3.3"
+  },
+  "devDependencies": {
+    "@artemv/wait-until-promise": "^1.1.2",
+    "@types/atom": "1.40.11",
+    "@types/jasmine": "^3.8.1",
+    "@types/node": "^16.3.2",
+    "atom-ide-base": "^3.3.0",
+    "atom-jasmine3-test-runner": "^5.2.7",
+    "babel-preset-atomic": "^4.1.0",
+    "build-commit": "0.1.4",
+    "cross-env": "^7.0.3",
+    "eslint-config-atomic": "^1.16.1",
+    "prettier-config-atomic": "^2.0.5",
+    "rollup-plugin-atomic": "^2.3.2",
+    "shx": "^0.3.3",
+    "temp": "^0.9.4",
+    "typescript": "^4.3.5",
+    "waitsfor": "^0.0.6"
+  },
+  "prettier": "prettier-config-atomic"
 }
