@@ -1,12 +1,31 @@
 {
   "name": "atom-ide-code-format",
   "displayName": "Code Formatting",
-  "repository": "https://github.com/facebook/nuclide",
-  "main": "./lib/main.js",
+  "repository": "https://github.com/atom-community/atom-ide-code-format",
+  "main": "./dist/main.js",
   "version": "0.0.0",
   "description": "Provides a code-formatting provider API",
-  "author": "NEEDS OWNER",
-  "atomTestRunner": "../../../scripts/atom-test-runner.js",
+  "scripts": {
+    "format": "prettier --write .",
+    "test.format": "prettier . --check",
+    "lint": "eslint . --fix",
+    "test.lint": "eslint .",
+    "test": "atom --test spec",
+    "clean": "shx rm -rf dist",
+    "babel": "npm run clean && shx cp -r src dist && cross-env NODE_ENV=development cross-env BABEL_KEEP_MODULES=false babel dist --out-dir dist",
+    "dev": "npm run clean && cross-env NODE_ENV=development cross-env BABEL_KEEP_MODULES=true rollup -c -w",
+    "build": "npm run clean && cross-env NODE_ENV=production cross-env BABEL_KEEP_MODULES=true rollup -c ",
+    "build-commit": "build-commit -o dist",
+    "bump": "ncu -u -x coffeescript",
+    "prepare": "npm run build"
+  },
+  "atomTestRunner": "./spec/runner",
+  "activationHooks": [
+    "core:loaded-shell-environment"
+  ],
+  "engines": {
+    "atom": ">=1.52.0 <2.0.0"
+  },
   "nuclide": {
     "configMetadata": {
       "pathComponents": [
@@ -60,5 +79,24 @@
         "0.1.0": "consumeOnSaveProvider"
       }
     }
-  }
+  },
+  "devDependencies": {
+    "@babel/cli": "7.13.16",
+    "@babel/core": "7.14.0",
+    "@types/atom": "1.40.10",
+    "@types/jasmine": "^3.6.10",
+    "@types/node": "^15.0.1",
+    "atom-jasmine3-test-runner": "^5.2.3",
+    "babel-preset-atomic": "^4.1.0",
+    "build-commit": "0.1.4",
+    "cross-env": "^7.0.3",
+    "eslint": "7.25.0",
+    "eslint-config-atomic": "^1.14.3",
+    "prettier-config-atomic": "^2.0.3",
+    "rollup": "^2.46.0",
+    "rollup-plugin-atomic": "^2.3.1",
+    "shx": "^0.3.3",
+    "typescript": "^4.2.4"
+  },
+  "prettier": "prettier-config-atomic"
 }

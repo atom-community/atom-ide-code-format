@@ -1,10 +1,10 @@
 import {Range} from 'atom';
 import {observeTextEditors} from 'nuclide-commons-atom/FileEventHandlers';
-import {SAVE_TIMEOUT} from '../lib/CodeFormatManager';
+import {SAVE_TIMEOUT} from '../dist/CodeFormatManager';
 import UniversalDisposable from 'nuclide-commons/UniversalDisposable';
 import temp from 'temp';
-import * as config from '../lib/config';
-import CodeFormatManager from '../lib/CodeFormatManager';
+import * as config from '../dist/config';
+import CodeFormatManager from '../dist/CodeFormatManager';
 import waitsFor from '../../../../../jest/waits_for';
 
 const sleep = n => new Promise(r => setTimeout(r, n));
