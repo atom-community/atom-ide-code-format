@@ -17,7 +17,7 @@ import { registerOnWillSave } from "@atom-ide-community/nuclide-commons-atom/Fil
 import { getFormatOnSave, getFormatOnType } from "./config"
 import { Range } from "atom"
 import { getLogger } from "log4js"
-import ProviderRegistry from "@atom-ide-community/nuclide-commons-atom/ProviderRegistry"
+import { ProviderRegistry } from "atom-ide-base/commons-atom/ProviderRegistry"
 import { applyTextEditsToBuffer } from "@atom-ide-community/nuclide-commons-atom/text-edit"
 import { observeEditorDestroy } from "@atom-ide-community/nuclide-commons-atom/text-editor"
 import { observableFromSubscribeFunction } from "@atom-ide-community/nuclide-commons/event"
