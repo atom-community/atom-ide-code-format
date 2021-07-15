@@ -1,6 +1,7 @@
+import type { TextEditor } from "atom"
 import featureConfig from "@atom-ide-community/nuclide-commons-atom/feature-config"
 
-export function getFormatOnSave(editor: atom$TextEditor): boolean {
+export function getFormatOnSave(editor: TextEditor): boolean {
   const formatOnSave = featureConfig.get("atom-ide-code-format.formatOnSave", {
     scope: editor.getRootScopeDescriptor(),
   }) as any

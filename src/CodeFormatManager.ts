@@ -1,3 +1,8 @@
+import type { Point, TextEditor, TextChange, Disposable } from "atom"
+// TODO add to @types/atom
+type AggregatedTextChange = {
+  changes: Array<TextChange>
+}
 import type { TextEdit } from "@atom-ide-community/nuclide-commons-atom/text-edit"
 import type { BusySignalService } from "atom-ide-base"
 import type {
@@ -20,6 +25,7 @@ import nuclideUri from "@atom-ide-community/nuclide-commons/nuclideUri"
 import { completingSwitchMap, microtask } from "@atom-ide-community/nuclide-commons/observable"
 import UniversalDisposable from "@atom-ide-community/nuclide-commons/UniversalDisposable"
 import { Observable } from "rxjs-compat/bundles/rxjs-compat.umd.min.js"
+import type { Subscription } from "rxjs"
 
 // Save events are critical, so don't allow providers to block them.
 export const SAVE_TIMEOUT = 2500
@@ -27,12 +33,12 @@ export const SAVE_TIMEOUT = 2500
 type FormatEvent =
   | {
       type: "command" | "save" | "new-save"
-      editor: atom$TextEditor
+      editor: TextEditor
     }
   | {
       type: "type"
-      editor: atom$TextEditor
-      edit: atom$AggregatedTextEditEvent
+      editor: TextEditor
+      edit: AggregatedTextChange
     }
 
 export default class CodeFormatManager {
@@ -58,7 +64,7 @@ export default class CodeFormatManager {
    * Subscribe to all formatting events (commands, saves, edits) and dispatch formatters as necessary. By handling all
    * events in a central location, we ensure that no buffer runs into race conditions with simultaneous formatters.
    */
-  _subscribeToEvents(): rxjs$Subscription {
+  _subscribeToEvents(): Subscription {
     // Events from the explicit Atom command.
     const commandEvents = observableFromSubscribeFunction((callback) =>
       atom.commands.add("atom-text-editor", "code-format:format-code", callback)
@@ -92,7 +98,7 @@ export default class CodeFormatManager {
   }
 
   /** Returns a stream of all typing and saving operations from the editor. */
-  _getEditorEventStream(editor: atom$TextEditor): Observable<FormatEvent> {
+  _getEditorEventStream(editor: TextEditor): Observable<FormatEvent> {
     const changeEvents = observableFromSubscribeFunction((callback) => editor.getBuffer().onDidChangeText(callback))
 
     // We need to capture when editors are about to be destroyed in order to
@@ -145,12 +151,12 @@ export default class CodeFormatManager {
   }
 
   // Return the text edits used to format code in the editor specified.
-  _formatCodeInTextEditor(editor: atom$TextEditor, range?: atom$Range): Observable<Array<TextEdit>> {
+  _formatCodeInTextEditor(editor: TextEditor, range?: Range): Observable<Array<TextEdit>> {
     return Observable.defer(() => {
       const buffer = editor.getBuffer()
       const selectionRange = range || editor.getSelectedBufferRange()
       const { start: selectionStart, end: selectionEnd } = selectionRange
-      let formatRange: atom$Range
+      let formatRange: Range
       if (selectionRange.isEmpty()) {
         // If no selection is done, then, the whole file is wanted to be formatted.
         formatRange = buffer.getRange()
@@ -208,8 +214,8 @@ export default class CodeFormatManager {
   }
 
   _formatCodeOnTypeInTextEditor(
-    editor: atom$TextEditor,
-    aggregatedEvent: atom$AggregatedTextEditEvent
+    editor: TextEditor,
+    aggregatedEvent: AggregatedTextChange
   ): Observable<Array<TextEdit>> {
     return Observable.defer(() => {
       // Don't try to format changes with multiple cursors.
@@ -289,7 +295,7 @@ export default class CodeFormatManager {
     }
   }
 
-  _formatCodeOnSaveInTextEditor(editor: atom$TextEditor): Observable<TextEdit> {
+  _formatCodeOnSaveInTextEditor(editor: TextEditor): Observable<TextEdit> {
     const saveProviders = [...this._onSaveProviders.getAllProvidersForEditor(editor)]
     if (saveProviders.length > 0) {
       return Observable.defer(() =>
@@ -312,7 +318,7 @@ export default class CodeFormatManager {
     return Observable.empty()
   }
 
-  _reportBusy<T>(editor: atom$TextEditor, promise: Promise<T>, revealTooltip: boolean = true): Promise<T> {
+  _reportBusy<T>(editor: TextEditor, promise: Promise<T>, revealTooltip: boolean = true): Promise<T> {
     const busySignalService = this._busySignalService
     if (busySignalService != null) {
       const path = editor.getPath()
@@ -322,23 +328,23 @@ export default class CodeFormatManager {
     return promise
   }
 
-  addRangeProvider(provider: RangeCodeFormatProvider): IDisposable {
+  addRangeProvider(provider: RangeCodeFormatProvider): Disposable {
     return this._rangeProviders.addProvider(provider)
   }
 
-  addFileProvider(provider: FileCodeFormatProvider): IDisposable {
+  addFileProvider(provider: FileCodeFormatProvider): Disposable {
     return this._fileProviders.addProvider(provider)
   }
 
-  addOnTypeProvider(provider: OnTypeCodeFormatProvider): IDisposable {
+  addOnTypeProvider(provider: OnTypeCodeFormatProvider): Disposable {
     return this._onTypeProviders.addProvider(provider)
   }
 
-  addOnSaveProvider(provider: OnSaveCodeFormatProvider): IDisposable {
+  addOnSaveProvider(provider: OnSaveCodeFormatProvider): Disposable {
     return this._onSaveProviders.addProvider(provider)
   }
 
-  consumeBusySignal(busySignalService: BusySignalService): IDisposable {
+  consumeBusySignal(busySignalService: BusySignalService): Disposable {
     this._busySignalService = busySignalService
     return new UniversalDisposable(() => {
       this._busySignalService = null
@@ -350,7 +356,7 @@ export default class CodeFormatManager {
   }
 }
 
-function shouldFormatOnType(event: atom$TextEditEvent): boolean {
+function shouldFormatOnType(event: TextChange): boolean {
   // There's not a direct way to figure out what caused this edit event. There
   // are three cases that we want to pay attention to:
   //

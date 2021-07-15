@@ -1,3 +1,4 @@
+import type { TextEditor, Range, Point } from "atom"
 import type { TextEdit } from "@atom-ide-community/nuclide-commons-atom/text-edit"
 
 /**
@@ -21,7 +22,7 @@ import type { TextEdit } from "@atom-ide-community/nuclide-commons-atom/text-edi
  * preferably in reverse-sorted order.
  */
 export type RangeCodeFormatProvider = {
-  formatCode: (editor: atom$TextEditor, range: atom$Range) => Promise<Array<TextEdit>>
+  formatCode: (editor: TextEditor, range: Range) => Promise<Array<TextEdit>>
   priority: number
   readonly grammarScopes?: Array<string>
 }
@@ -32,8 +33,8 @@ export type RangeCodeFormatProvider = {
  */
 export type FileCodeFormatProvider = {
   formatEntireFile: (
-    editor: atom$TextEditor,
-    range: atom$Range
+    editor: TextEditor,
+    range: Range
   ) => Promise<
     | {
         newCursor?: number
@@ -53,11 +54,7 @@ export type FileCodeFormatProvider = {
  * This will automatically triggered after every typing event.
  */
 export type OnTypeCodeFormatProvider = {
-  formatAtPosition: (
-    editor: atom$TextEditor,
-    position: atom$Point,
-    triggerCharacter: string
-  ) => Promise<Array<TextEdit>>
+  formatAtPosition: (editor: TextEditor, position: Point, triggerCharacter: string) => Promise<Array<TextEdit>>
   priority: number
   readonly grammarScopes?: Array<string>
   keepCursorPosition: boolean
@@ -65,7 +62,7 @@ export type OnTypeCodeFormatProvider = {
 
 /** Formats files after save events. */
 export type OnSaveCodeFormatProvider = {
-  formatOnSave: (editor: atom$TextEditor) => Promise<Array<TextEdit>>
+  formatOnSave: (editor: TextEditor) => Promise<Array<TextEdit>>
   priority: number
   readonly grammarScopes?: Array<string>
 }
