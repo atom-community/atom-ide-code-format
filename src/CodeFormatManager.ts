@@ -53,6 +53,9 @@ export default class CodeFormatManager {
         const editorSubs = new CompositeDisposable(
           // Format on typing in the editor
           editor.getBuffer().onDidStopChanging(async (event) => {
+            if (!getFormatOnType()) {
+              return
+            }
             try {
               await this._formatCodeOnTypeInTextEditor(editor, event)
             } catch (err) {
@@ -148,25 +151,25 @@ export default class CodeFormatManager {
 
   async _formatCodeOnTypeInTextEditor(
     editor: TextEditor,
-    aggregatedEvent: BufferStoppedChangingEvent
+    { changes }: BufferStoppedChangingEvent
   ): Promise<Array<TextEdit>> {
     // Don't try to format changes with multiple cursors.
-    if (aggregatedEvent.changes.length !== 1) {
+    if (changes.length !== 1) {
       return []
     }
-    const event = aggregatedEvent.changes[0]
+    // if no provider return immediately
+    const providers = [...this._onTypeProviders.getAllProvidersForEditor(editor)]
+    if (providers.length === 0) {
+      return []
+    }
+    const event = changes[0]
     // This also ensures the non-emptiness of event.newText for below.
-    if (!shouldFormatOnType(event) || !getFormatOnType()) {
+    if (!shouldFormatOnType(event)) {
       return []
     }
     // In the case of bracket-matching, we use the last character because that's
     // the character that will usually cause a reformat (i.e. `}` instead of `{`).
     const character = event.newText[event.newText.length - 1]
-
-    const providers = [...this._onTypeProviders.getAllProvidersForEditor(editor)]
-    if (providers.length === 0) {
-      return []
-    }
 
     const contents = editor.getText()
     const cursorPosition = editor.getCursorBufferPosition().copy()
