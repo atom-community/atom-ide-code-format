@@ -8,7 +8,7 @@
   "formatOnType": {
     "title": "Format on Type",
     "type": "boolean",
-    "default": true,
+    "default": false,
     "description": "Automatically format code as you type it for supported languages."
   }
 }

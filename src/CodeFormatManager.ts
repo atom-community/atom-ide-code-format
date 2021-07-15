@@ -7,15 +7,15 @@ import type {
   RangeCodeFormatProvider,
 } from "./types"
 
-import { registerOnWillSave } from "@atom-ide-community/nuclide-commons-atom/FileEventHandlers"
 import { getFormatOnSave, getFormatOnType } from "./config"
 import { getLogger } from "log4js"
 import { ProviderRegistry } from "atom-ide-base/commons-atom/ProviderRegistry"
 import { applyTextEditsToBuffer } from "@atom-ide-community/nuclide-commons-atom/text-edit"
 import nuclideUri from "@atom-ide-community/nuclide-commons/nuclideUri"
+import { debounce } from "./utils"
 
 // Save events are critical, so don't allow providers to block them.
-export const SAVE_TIMEOUT = 2500
+export const SAVE_TIMEOUT = 500
 
 export default class CodeFormatManager {
   _subscriptions: CompositeDisposable
@@ -49,28 +49,36 @@ export default class CodeFormatManager {
         }
       }),
 
-      // Events from typing in the editor
       atom.workspace.observeTextEditors((editor) => {
-        const onChangeSubs = editor.getBuffer().onDidStopChanging(async (event) => {
-          try {
-            await this._formatCodeOnTypeInTextEditor(editor, event)
-          } catch (err) {
-            getLogger("code-format").warn("Failed to format code on type:", err)
-          }
-        })
+        const editorSubs = new CompositeDisposable(
+          // Format on typing in the editor
+          editor.getBuffer().onDidStopChanging(async (event) => {
+            if (!getFormatOnType()) {
+              return
+            }
+            try {
+              await this._formatCodeOnTypeInTextEditor(editor, event)
+            } catch (err) {
+              getLogger("code-format").warn("Failed to format code on type:", err)
+            }
+          }),
+          // Format on save
+          editor.onDidSave(
+            debounce(async () => {
+              const edits = await this._formatCodeOnSaveInTextEditor(editor)
+              const success = applyTextEditsToBuffer(editor.getBuffer(), edits) as boolean
+              if (!success) {
+                throw new Error("No code formatting providers found!")
+              }
+            }, SAVE_TIMEOUT)
+          )
+        )
         // Make sure we halt everything when the editor gets destroyed.
         // We need to capture when editors are about to be destroyed in order to
         // interrupt any pending formatting operations. (Otherwise, we may end up
         // attempting to save a destroyed editor!)
-        editor.onDidDestroy(() => onChangeSubs.dispose())
-      }),
-
-      // Format on save
-      registerOnWillSave(() => ({
-        priority: 0,
-        timeout: SAVE_TIMEOUT,
-        callback: this._formatCodeOnSaveInTextEditor.bind(this),
-      }))
+        editor.onDidDestroy(() => editorSubs.dispose())
+      })
     )
 
     this._rangeProviders = new ProviderRegistry()
@@ -80,15 +88,19 @@ export default class CodeFormatManager {
   }
 
   // Return the text edits used to format code in the editor specified.
-  async _formatCodeInTextEditor(editor: TextEditor, range?: Range): Promise<Array<TextEdit>> {
+  async _formatCodeInTextEditor(
+    editor: TextEditor,
+    selectionRange: Range = editor.getSelectedBufferRange()
+  ): Promise<Array<TextEdit>> {
     const buffer = editor.getBuffer()
-    const selectionRange = range ?? editor.getSelectedBufferRange()
-    const { start: selectionStart, end: selectionEnd } = selectionRange
+    const bufferRange = buffer.getRange()
+
     let formatRange: Range
     if (selectionRange.isEmpty()) {
       // If no selection is done, then, the whole file is wanted to be formatted.
-      formatRange = buffer.getRange()
+      formatRange = bufferRange
     } else {
+      const { start: selectionStart, end: selectionEnd } = selectionRange
       // Format selections should start at the beginning of the line,
       // and include the last selected line end.
       // (If the user has already selected complete rows, then depending on how they
@@ -101,59 +113,63 @@ export default class CodeFormatManager {
         selectionEnd.column === 0 ? selectionEnd : [selectionEnd.row + 1, 0]
       )
     }
-    const rangeProviders = [...this._rangeProviders.getAllProvidersForEditor(editor)]
-    const fileProviders = [...this._fileProviders.getAllProvidersForEditor(editor)]
-    const contents = editor.getText()
 
-    const allEdits = await this._reportBusy(
+    // range providers
+    const rangeProviders = [...this._rangeProviders.getAllProvidersForEditor(editor)]
+    const allRangeEdits = await this._reportBusy(
       editor,
       Promise.all(rangeProviders.map((p) => p.formatCode(editor, formatRange)))
     )
-    const rangeEdits = allEdits.filter((edits) => edits.length > 0)
+    const rangeEdits = allRangeEdits.filter((edits) => edits.length > 0)
 
-    const allResults = await this._reportBusy(
+    // file providers
+    const fileProviders = [...this._fileProviders.getAllProvidersForEditor(editor)]
+    const allFileEdits = await this._reportBusy(
       editor,
       Promise.all(fileProviders.map((p) => p.formatEntireFile(editor, formatRange)))
     )
-    const nonNullResults = allResults.filter((result) => result !== null && result !== undefined) as {
+    const nonNullFileEdits = allFileEdits.filter((result) => result !== null && result !== undefined) as {
       newCursor?: number
       formatted: string
     }[]
-    const fileEdits = nonNullResults.map(({ formatted }) => [
+    const contents = editor.getText()
+    const editorRange = editor.getBuffer().getRange()
+    const fileEdits = nonNullFileEdits.map(({ formatted }) => [
       {
-        oldRange: editor.getBuffer().getRange(),
+        oldRange: editorRange,
         newText: formatted,
         oldText: contents,
       } as TextEdit,
     ])
 
+    // merge edits
     // When formatting the entire file, prefer file-based providers.
-    const preferFileEdits = formatRange.isEqual(buffer.getRange())
+    const preferFileEdits = formatRange.isEqual(bufferRange)
     const edits = preferFileEdits ? fileEdits.concat(rangeEdits) : rangeEdits.concat(fileEdits)
     return edits.flat() // TODO or [0]?
   }
 
   async _formatCodeOnTypeInTextEditor(
     editor: TextEditor,
-    aggregatedEvent: BufferStoppedChangingEvent
+    { changes }: BufferStoppedChangingEvent
   ): Promise<Array<TextEdit>> {
     // Don't try to format changes with multiple cursors.
-    if (aggregatedEvent.changes.length !== 1) {
+    if (changes.length !== 1) {
       return []
     }
-    const event = aggregatedEvent.changes[0]
+    // if no provider return immediately
+    const providers = [...this._onTypeProviders.getAllProvidersForEditor(editor)]
+    if (providers.length === 0) {
+      return []
+    }
+    const event = changes[0]
     // This also ensures the non-emptiness of event.newText for below.
-    if (!shouldFormatOnType(event) || !getFormatOnType()) {
+    if (!shouldFormatOnType(event)) {
       return []
     }
     // In the case of bracket-matching, we use the last character because that's
     // the character that will usually cause a reformat (i.e. `}` instead of `{`).
     const character = event.newText[event.newText.length - 1]
-
-    const providers = [...this._onTypeProviders.getAllProvidersForEditor(editor)]
-    if (providers.length === 0) {
-      return []
-    }
 
     const contents = editor.getText()
     const cursorPosition = editor.getCursorBufferPosition().copy()
