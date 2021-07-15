@@ -3,8 +3,7 @@ import type { TextEditor, TextChange, Disposable } from "atom"
 type AggregatedTextChange = {
   changes: Array<TextChange>
 }
-import type { TextEdit } from "@atom-ide-community/nuclide-commons-atom/text-edit"
-import type { BusySignalService } from "atom-ide-base"
+import type { TextEdit, BusySignalService } from "atom-ide-base"
 import type {
   FileCodeFormatProvider,
   OnSaveCodeFormatProvider,
