@@ -66,10 +66,11 @@ export default class CodeFormatManager {
     // Events from the explicit Atom command.
     this._subscriptions.add(
       atom.commands.add("atom-text-editor", "code-format:format-code", async (event) => {
-        const editor = atom.workspace.getActiveTextEditor()
-        if (!editor) {
+        const editorElement = event.currentTarget
+        if (!editorElement) {
           return
         }
+        const editor = editorElement.getModel()
         // Make sure we halt everything when the editor gets destroyed.
         const edits = await this._formatCodeInTextEditor(editor)
         try {
