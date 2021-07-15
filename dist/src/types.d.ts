@@ -1,5 +1,5 @@
 import type { TextEditor, Range, Point } from "atom";
-import type { TextEdit } from "@atom-ide-community/nuclide-commons-atom/text-edit";
+import type { TextEdit } from "atom-ide-base";
 /**
  * A brief overview of the different code formatting providers:
  *

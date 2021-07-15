@@ -1,46 +1,19 @@
-import type { TextEditor, TextChange, Disposable } from "atom";
-declare type AggregatedTextChange = {
-    changes: Array<TextChange>;
-};
-import type { TextEdit } from "@atom-ide-community/nuclide-commons-atom/text-edit";
-import type { BusySignalService } from "atom-ide-base";
+import { Range, CompositeDisposable, TextEditor, Disposable, BufferStoppedChangingEvent } from "atom";
+import type { TextEdit, BusySignalService } from "atom-ide-base";
 import type { FileCodeFormatProvider, OnSaveCodeFormatProvider, OnTypeCodeFormatProvider, RangeCodeFormatProvider } from "./types";
-import { Range } from "atom";
-import ProviderRegistry from "@atom-ide-community/nuclide-commons-atom/ProviderRegistry";
-import UniversalDisposable from "@atom-ide-community/nuclide-commons/UniversalDisposable";
-import { Observable } from "rxjs-compat/bundles/rxjs-compat.umd.min.js";
-import type { Subscription } from "rxjs";
+import { ProviderRegistry } from "atom-ide-base/commons-atom/ProviderRegistry";
 export declare const SAVE_TIMEOUT = 2500;
-declare type FormatEvent = {
-    type: "command" | "save" | "new-save";
-    editor: TextEditor;
-} | {
-    type: "type";
-    editor: TextEditor;
-    edit: AggregatedTextChange;
-};
 export default class CodeFormatManager {
-    _subscriptions: UniversalDisposable;
+    _subscriptions: CompositeDisposable;
     _rangeProviders: ProviderRegistry<RangeCodeFormatProvider>;
     _fileProviders: ProviderRegistry<FileCodeFormatProvider>;
     _onTypeProviders: ProviderRegistry<OnTypeCodeFormatProvider>;
     _onSaveProviders: ProviderRegistry<OnSaveCodeFormatProvider>;
-    _busySignalService: BusySignalService | undefined | null;
+    _busySignalService: BusySignalService | undefined;
     constructor();
-    /**
-     * Subscribe to all formatting events (commands, saves, edits) and dispatch formatters as necessary. By handling all
-     * events in a central location, we ensure that no buffer runs into race conditions with simultaneous formatters.
-     */
-    _subscribeToEvents(): Subscription;
-    _handleEvent(event: FormatEvent): Observable<unknown>;
-    _formatCodeInTextEditor(editor: TextEditor, range?: Range): Observable<Array<TextEdit>>;
-    _formatCodeOnTypeInTextEditor(editor: TextEditor, aggregatedEvent: AggregatedTextChange): Observable<Array<TextEdit>>;
-    _onWillSaveProvider(): {
-        priority: number;
-        timeout: number;
-        callback: (editor: TextEditor) => any;
-    };
-    _formatCodeOnSaveInTextEditor(editor: TextEditor): Observable<TextEdit>;
+    _formatCodeInTextEditor(editor: TextEditor, range?: Range): Promise<Array<TextEdit>>;
+    _formatCodeOnTypeInTextEditor(editor: TextEditor, aggregatedEvent: BufferStoppedChangingEvent): Promise<Array<TextEdit>>;
+    _formatCodeOnSaveInTextEditor(editor: TextEditor): Promise<TextEdit[]>;
     _reportBusy<T>(editor: TextEditor, promise: Promise<T>, revealTooltip?: boolean): Promise<T>;
     addRangeProvider(provider: RangeCodeFormatProvider): Disposable;
     addFileProvider(provider: FileCodeFormatProvider): Disposable;
@@ -49,4 +22,3 @@ export default class CodeFormatManager {
     consumeBusySignal(busySignalService: BusySignalService): Disposable;
     dispose(): void;
 }
-export {};
