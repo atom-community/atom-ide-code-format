@@ -1,8 +1,4 @@
-import type { TextEditor, TextChange, Disposable } from "atom"
-// TODO add to @types/atom
-type AggregatedTextChange = {
-  changes: Array<TextChange>
-}
+import { Range, CompositeDisposable, TextEditor, TextChange, Disposable, BufferStoppedChangingEvent } from "atom"
 import type { TextEdit, BusySignalService } from "atom-ide-base"
 import type {
   FileCodeFormatProvider,
@@ -14,34 +10,19 @@ import type {
 import nullthrows from "nullthrows"
 import { registerOnWillSave } from "@atom-ide-community/nuclide-commons-atom/FileEventHandlers"
 import { getFormatOnSave, getFormatOnType } from "./config"
-import { Range } from "atom"
 import { getLogger } from "log4js"
 import { ProviderRegistry } from "atom-ide-base/commons-atom/ProviderRegistry"
 import { applyTextEditsToBuffer } from "@atom-ide-community/nuclide-commons-atom/text-edit"
-import { observeEditorDestroy } from "@atom-ide-community/nuclide-commons-atom/text-editor"
-import { observableFromSubscribeFunction } from "@atom-ide-community/nuclide-commons/event"
 import nuclideUri from "@atom-ide-community/nuclide-commons/nuclideUri"
-import { completingSwitchMap, microtask } from "@atom-ide-community/nuclide-commons/observable"
+import { microtask } from "@atom-ide-community/nuclide-commons/observable"
 import UniversalDisposable from "@atom-ide-community/nuclide-commons/UniversalDisposable"
 import { Observable } from "rxjs-compat/bundles/rxjs-compat.umd.min.js"
-import type { Subscription } from "rxjs"
 
 // Save events are critical, so don't allow providers to block them.
 export const SAVE_TIMEOUT = 2500
 
-type FormatEvent =
-  | {
-      type: "command" | "save" | "new-save"
-      editor: TextEditor
-    }
-  | {
-      type: "type"
-      editor: TextEditor
-      edit: AggregatedTextChange
-    }
-
 export default class CodeFormatManager {
-  _subscriptions = new UniversalDisposable()
+  _subscriptions: CompositeDisposable
   _rangeProviders: ProviderRegistry<RangeCodeFormatProvider>
   _fileProviders: ProviderRegistry<FileCodeFormatProvider>
   _onTypeProviders: ProviderRegistry<OnTypeCodeFormatProvider>
@@ -49,22 +30,12 @@ export default class CodeFormatManager {
   _busySignalService: BusySignalService | undefined | null
 
   constructor() {
-    this._subscriptions = new UniversalDisposable(
-      registerOnWillSave(this._onWillSaveProvider())
-    )
-    this._rangeProviders = new ProviderRegistry()
-    this._fileProviders = new ProviderRegistry()
-    this._onTypeProviders = new ProviderRegistry()
-    this._onSaveProviders = new ProviderRegistry()
-  }
-
-  /**
-   * Subscribe to all formatting events (commands, saves, edits) and dispatch formatters as necessary. By handling all
-   * events in a central location, we ensure that no buffer runs into race conditions with simultaneous formatters.
-   */
-  _subscribeToEvents(): Subscription {
-    // Events from the explicit Atom command.
-    this._subscriptions.add(
+    /**
+     * Subscribe to all formatting events (commands, saves, edits) and dispatch formatters as necessary. By handling all
+     * events in a central location, we ensure that no buffer runs into race conditions with simultaneous formatters.
+     */
+    this._subscriptions = new CompositeDisposable(
+      // Events from the explicit Atom command.
       atom.commands.add("atom-text-editor", "code-format:format-code", async (event) => {
         const editorElement = event.currentTarget
         if (!editorElement) {
@@ -84,41 +55,30 @@ export default class CodeFormatManager {
             detail: err.detail,
           })
         }
-      })
-    )
+      }),
 
-    // Events from editor actions (saving, typing).
-    const editorEvents = observableFromSubscribeFunction((cb) => atom.workspace.observeTextEditors(cb)).mergeMap(
-      (editor) => _getEditorEventStream(editor)
-    )
-
-    return (
-      editorEvents
-        // Group events by buffer to prevent simultaneous formatting operations.
-        .groupBy(
-          (event) => event.editor.getBuffer(),
-          (event) => event,
-          (grouped) => observableFromSubscribeFunction((callback) => grouped.key.onDidDestroy(callback))
-        )
-        .mergeMap((events) =>
-          // Make sure we halt everything when the editor gets destroyed.
-          events.let(completingSwitchMap((event) => this._handleEvent(event)))
-        )
-        .subscribe()
-    )
-  }
-
-  async _handleEvent(event: FormatEvent) {
-    const { editor } = event
-    switch (event.type) {
-      case "type":
-        return this._formatCodeOnTypeInTextEditor(editor, event.edit).catch((err) => {
-          getLogger("code-format").warn("Failed to format code on type:", err)
-          return Observable.empty()
+      // Events from typing in the editor
+      atom.workspace.observeTextEditors((editor) => {
+        const onChangeSubs = editor.getBuffer().onDidStopChanging((event) => {
+          this._formatCodeOnTypeInTextEditor(editor, event).catch((err) => {
+            getLogger("code-format").warn("Failed to format code on type:", err)
+          })
         })
-      default:
-        return Observable.throw(`unknown event type ${event.type}`)
-    }
+        // Make sure we halt everything when the editor gets destroyed.
+        // We need to capture when editors are about to be destroyed in order to
+        // interrupt any pending formatting operations. (Otherwise, we may end up
+        // attempting to save a destroyed editor!)
+        editor.onDidDestroy(() => onChangeSubs.dispose())
+      }),
+
+      // Format on save
+      registerOnWillSave(this._onWillSaveProvider())
+    )
+
+    this._rangeProviders = new ProviderRegistry()
+    this._fileProviders = new ProviderRegistry()
+    this._onTypeProviders = new ProviderRegistry()
+    this._onSaveProviders = new ProviderRegistry()
   }
 
   // Return the text edits used to format code in the editor specified.
@@ -177,7 +137,7 @@ export default class CodeFormatManager {
 
   _formatCodeOnTypeInTextEditor(
     editor: TextEditor,
-    aggregatedEvent: AggregatedTextChange
+    aggregatedEvent: BufferStoppedChangingEvent
   ): Observable<Array<TextEdit>> {
     return Observable.defer(() => {
       // Don't try to format changes with multiple cursors.
@@ -358,20 +318,4 @@ function _checkContentsAreSame(before: string, after: string): void {
   if (before !== after) {
     throw new Error("The file contents were changed before formatting was complete.")
   }
-}
-
-/** Returns a stream of all typing and saving operations from the editor. */
-function _getEditorEventStream(editor: TextEditor): Observable<FormatEvent> {
-  const changeEvents = observableFromSubscribeFunction((callback) => editor.getBuffer().onDidChangeText(callback))
-
-  // We need to capture when editors are about to be destroyed in order to
-  // interrupt any pending formatting operations. (Otherwise, we may end up
-  // attempting to save a destroyed editor!)
-  const willDestroyEvents = observableFromSubscribeFunction((cb) => atom.workspace.onWillDestroyPaneItem(cb)).filter(
-    (event) => event.item === editor
-  )
-
-  return Observable.merge(changeEvents.map((edit) => ({ type: "type", editor, edit }))).takeUntil(
-    Observable.merge(observeEditorDestroy(editor), willDestroyEvents)
-  )
 }
