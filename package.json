@@ -3,7 +3,7 @@
   "displayName": "Code Formatting for Atom IDE",
   "repository": "https://github.com/atom-community/atom-ide-code-format",
   "main": "./dist/main.js",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Provides a code-formatting provider API",
   "scripts": {
     "format": "prettier --write .",

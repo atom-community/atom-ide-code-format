@@ -1,3 +1,10 @@
+## [1.0.3](https://github.com/atom-community/atom-ide-code-format/compare/v1.0.2...v1.0.3) (2022-03-27)
+
+
+### Bug Fixes
+
+* **deps:** update dependency log4js to v6.4.4 ([99a9628](https://github.com/atom-community/atom-ide-code-format/commit/99a9628abd51ef100bc9b66e38d7fbea60d22dee))
+
 ## [1.0.2](https://github.com/atom-community/atom-ide-code-format/compare/v1.0.1...v1.0.2) (2021-07-15)
 
 
